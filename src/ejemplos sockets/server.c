@@ -10,8 +10,8 @@
 #include <ctype.h>
 #include <unistd.h>
 
-#define PORT 3494
-#define MY_IP "172.16.141.163"
+#define PORT 33335
+#define MY_IP "127.0.0.1"
 #define MAX_QUEUE 10
 #define MAX_MSG_SIZE 1024
 
@@ -68,10 +68,12 @@ int main()
       
       //primitiva CLOSE
       close(socket_to_client);
+      close(server_socket);
+      break;
    }
 
    //CLOSE del socket que espera conexiones
-   close(server_socket);
 
     return 0;
 }
+
