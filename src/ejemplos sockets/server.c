@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 #define PORT 3494
-#define MY_IP "172.16.141.163"
+#define MY_IP "172.16.133.17"
 #define MAX_QUEUE 10
 #define MAX_MSG_SIZE 1024
 
@@ -38,7 +38,7 @@ int main()
    listen(server_socket, MAX_QUEUE);
    printf("\n comienza a escuchar");
    
-
+   std::vector<std::unique_ptr<std::thread>> threads;
    while (1) {
       printf("\n espero una conexion - accept...");
       //primitiva ACCEPT
