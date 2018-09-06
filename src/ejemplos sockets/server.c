@@ -68,10 +68,12 @@ int main()
       
       //primitiva CLOSE
       close(socket_to_client);
+      close(server_socket);
+      break;
    }
 
    //CLOSE del socket que espera conexiones
-   close(server_socket);
 
     return 0;
 }
+
