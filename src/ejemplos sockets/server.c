@@ -19,39 +19,6 @@
 
 void *tcp_handler(void *);
 
-void *tcp_handler(void *socket_desc){
-	printf("\nRecibio conexion\n");
-	
-		int sock = *(int*)socket_desc;
-
-      //primitiva RECEIVE
-      char* data = malloc(MAX_MSG_SIZE);
-      int data_size = MAX_MSG_SIZE;
-		int is_connected = 1;
-
-		while (is_connected){
-			int received_data_size = recv(sock, data, data_size, 0);
-      
-			printf("Recibido del cliente (%d bytes): %s\n", received_data_size, data);
-			
-			if (data != NULL && data[0]){ // para que el cliente pueda cerrar la conexion, pero no funciona
-				int i;
-				for (i = 0; i < received_data_size; i++) {
-					data[i] = toupper(data[i]);
-				}
-				
-				//primitiva SEND
-				int sent_data_size = send(sock, data, received_data_size, 0);
-				printf("Enviado al cliente (%d bytes): %s\n", sent_data_size, data);
-			}else
-				is_connected = 0;
-
-		} // Funciona con muchas terminales. Ahora que el servidor sepa el port.
-
-		close(sock);
-		return 0;
-}
-
 int main()
 {
    //primitiva SOCKET
@@ -98,4 +65,37 @@ int main()
    //CLOSE del socket que espera conexiones
 
     return 0;
+}
+
+void *tcp_handler(void *socket_desc){
+	printf("\nRecibio conexion\n");
+	
+		int sock = *(int*)socket_desc;
+
+      //primitiva RECEIVE
+      char* data = malloc(MAX_MSG_SIZE);
+      int data_size = MAX_MSG_SIZE;
+		int is_connected = 1;
+
+		while (is_connected){
+			int received_data_size = recv(sock, data, data_size, 0);
+      
+			printf("Recibido del cliente (%d bytes): %s\n", received_data_size, data);
+			
+			if (data != NULL && data[0]){ // para que el cliente pueda cerrar la conexion, pero no funciona
+				int i;
+				for (i = 0; i < received_data_size; i++) {
+					data[i] = toupper(data[i]);
+				}
+				
+				//primitiva SEND
+				int sent_data_size = send(sock, data, received_data_size, 0);
+				printf("Enviado al cliente (%d bytes): %s\n", sent_data_size, data);
+			}else
+				is_connected = 0;
+
+		} // Funciona con muchas terminales. Ahora que el servidor sepa el port.
+
+		close(sock);
+		return 0;
 }
