@@ -9,11 +9,48 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <pthread.h>
 
-#define PORT 3494
-#define MY_IP "172.16.133.17"
+#define PORT 8888
+#define MY_IP "127.0.0.1"
 #define MAX_QUEUE 10
 #define MAX_MSG_SIZE 1024
+#define TRUE 1
+
+void *tcp_handler(void *);
+
+void *tcp_handler(void *socket_desc){
+	printf("\nRecibio conexion\n");
+	
+		int sock = *(int*)socket_desc;
+
+      //primitiva RECEIVE
+      char* data = malloc(MAX_MSG_SIZE);
+      int data_size = MAX_MSG_SIZE;
+		int is_connected = 1;
+
+		while (is_connected){
+			int received_data_size = recv(sock, data, data_size, 0);
+      
+			printf("Recibido del cliente (%d bytes): %s\n", received_data_size, data);
+			
+			if (data != NULL && data[0]){ // para que el cliente pueda cerrar la conexion, pero no funciona
+				int i;
+				for (i = 0; i < received_data_size; i++) {
+					data[i] = toupper(data[i]);
+				}
+				
+				//primitiva SEND
+				int sent_data_size = send(sock, data, received_data_size, 0);
+				printf("Enviado al cliente (%d bytes): %s\n", sent_data_size, data);
+			}else
+				is_connected = 0;
+
+		} // Funciona con muchas terminales. Ahora que el servidor sepa el port.
+
+		close(sock);
+		return 0;
+}
 
 int main()
 {
@@ -38,7 +75,8 @@ int main()
    listen(server_socket, MAX_QUEUE);
    printf("\n comienza a escuchar");
    
-   std::vector<std::unique_ptr<std::thread>> threads;
+	pthread_t thread_id;
+
    while (1) {
       printf("\n espero una conexion - accept...");
       //primitiva ACCEPT
@@ -48,32 +86,16 @@ int main()
 	     server_socket, 
 		 (struct sockaddr *)&client_addr, &client_addr_size
       );
-      printf("\nRecibio conexion\n");
-   
-      //primitiva RECEIVE
-      char* data = malloc(MAX_MSG_SIZE);
-      int data_size = MAX_MSG_SIZE;
-      int received_data_size = recv(socket_to_client, data, data_size, 0);
+		pthread_create( &thread_id , NULL ,  tcp_handler , (void*) &socket_to_client);
       
-      printf("Recibido del cliente (%d bytes): %s\n", received_data_size, data);
-      
-      int i;
-      for (i = 0; i < received_data_size; i++) {
-         data[i] = toupper(data[i]);
-      }
-      
-      //primitiva SEND
-      int sent_data_size = send(socket_to_client, data, received_data_size, 0);
-      printf("Enviado al cliente (%d bytes): %s\n", sent_data_size, data);
       
       //primitiva CLOSE
-      close(socket_to_client);
-      close(server_socket);
-      break;
+      
+      
    }
+	close(server_socket);
 
    //CLOSE del socket que espera conexiones
 
     return 0;
 }
-
