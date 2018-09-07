@@ -3,7 +3,7 @@
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <string>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
@@ -18,6 +18,8 @@
 #define TRUE 1
 
 void *tcp_handler(void *);
+void *udp_handler();
+
 
 int main()
 {
@@ -53,6 +55,7 @@ int main()
 	     server_socket, 
 		 (struct sockaddr *)&client_addr, &client_addr_size
       );
+        //Thread control (TCP)
 		pthread_create( &thread_id , NULL ,  tcp_handler , (void*) &socket_to_client);
       
       
@@ -66,6 +69,30 @@ int main()
 
     return 0;
 }
+void *udp_handler(){
+	
+	while(TRUE)
+	{
+		/*
+		if(estados.status[i] == 1)
+		{
+			if(cap no abierto)
+				abrir cap
+
+			cap.read();
+			sock.sendto(estados.port[i], currentFrame)
+			waitKey()
+
+			else if(estados.status[i] == 0)
+				sleep 1
+			else if(estados.status[i] == 2)
+				cerrar cap
+		}
+		*/
+        break;
+	}	
+	return 0;
+}
 
 void *tcp_handler(void *socket_desc){
 	printf("\nRecibio conexion\n");
@@ -73,31 +100,42 @@ void *tcp_handler(void *socket_desc){
 		int sock = *(int*)socket_desc;
 
       //primitiva RECEIVE
-      char* data = (char*)malloc(MAX_MSG_SIZE);
+      char data[MAX_MSG_SIZE];
       int data_size = MAX_MSG_SIZE;
 		int is_connected = 1;
 
 		while (is_connected){
 			int received_data_size = recv(sock, data, data_size, 0);
-      
-			printf("Recibido del cliente (%d bytes): %s\n", received_data_size, data);
-			printf("Resultado comparar: %d\n", checkMessage(data));
 
-			
-			if (data != NULL && data[0]){ // para que el cliente pueda cerrar la conexion, pero no funciona
-				int i;
-				for (i = 0; i < received_data_size; i++) {
-					data[i] = toupper(data[i]);
-				}
-				
-				//primitiva SEND
-				int sent_data_size = send(sock, data, received_data_size, 0);
-				printf("Enviado al cliente (%d bytes): %s\n", sent_data_size, data);
+            std::string message = data;
+			// puts(message.substr(0, 1).c_str());
+            std::string play = "play";
+            std::string pause = "pause";
+            std::string stop = "stop";
+            std::string init = "init";
 
-				is_connected =0;
-			}else
-				is_connected = 0;
+            if (message.compare(0, play.length(), play) == 0){
+                printf("Envio play\n");
+            }
+            else if (message.compare(0, pause.length(), pause) == 0){
+                printf("Envio pause\n");
+            }
+            else if (message.compare(0, stop.length(), stop) == 0){
+                printf("Envio stop\n");
+            } else if (message.compare(0, init.length(), init) == 0){
+                std::string puerto_str = message.substr(init.length()+1, received_data_size-2).c_str();
+                int puerto = std::stoi(puerto_str);
+                printf("%d\n", puerto);
+            }
+            else
+                printf("Escribio cualquier cosa\n");
 
+            
+            
+			//primitiva SEND
+			int sent_data_size = send(sock, data, received_data_size, 0);
+			printf("Enviado al cliente (%d bytes): %s\n", sent_data_size, data);
+			is_connected = 0;
 		} // Funciona con muchas terminales. Ahora que el servidor sepa el port.
 
 		close(sock);
