@@ -23,6 +23,7 @@ using namespace std;
 void *tcp_handler(void *);
 void *udp_handler();
 bool has_received(string, string);
+int get_port_cmd(string, string);
 
 int main(){
     //primitiva SOCKET
@@ -113,9 +114,8 @@ void *tcp_handler(void *socket_desc){
         }else if (has_received(message, STOP)){
             printf("Envio stop\n");
         }else if (has_received(message, INIT)){
-            std::string puerto_str = message.substr(INIT.length() + 1, received_data_size - 2).c_str();
-            int puerto = std::stoi(puerto_str);
-            printf("%d\n", puerto);
+            int port = get_port_cmd(message, INIT);
+            printf("%d\n", port);
         }else
             printf("Escribio cualquier cosa\n");
 
@@ -131,4 +131,10 @@ void *tcp_handler(void *socket_desc){
 
 bool has_received(string message, string command){
     return (message.compare(0, command.length(), command) == 0);
+}
+
+int get_port_cmd(string message, string command){
+    string port_str = message.substr(command.length() + 1, message.length() - 2).c_str();
+    int port = stoi(port_str);
+    return port;
 }
