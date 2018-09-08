@@ -24,6 +24,9 @@ bool has_received(string, string);
 int get_port_cmd(string, string);
 void exit_error(string);
 
+int ext_port = 8888;;
+const char* ext_ip = "127.0.0.1";
+
 int main(){
     //primitiva SOCKET
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -79,7 +82,7 @@ int main(){
     // ver ejemplos http://man7.org/linux/man-pages/man3/pthread_create.3.html
 
     while (1){
-        printf("\n espero una conexion - accept...");
+        printf("Esperando un accept (TCP)...\n");
         //primitiva ACCEPT
         struct sockaddr_in client_addr;
         socklen_t client_addr_size = sizeof client_addr;
@@ -90,6 +93,7 @@ int main(){
         pthread_create(&thread_id, NULL, tcp_handler, (void *)&socket_to_client);
 
         // Thread datos (UDP)
+        // Ver si pasar por parametro id del host, para sincronizar udp y tcp con mismo host.
         pthread_create(&thread_id_2, NULL, udp_handler, (void*) &udp_socket);
   
     }
@@ -104,13 +108,15 @@ void *udp_handler(void * socket_desc){
     int udp_sock = *(int *)socket_desc;
     int recv_len;
     char data[MAX_MSG_SIZE];
-    
+
     struct sockaddr_in si_other;
     socklen_t slen = sizeof(si_other);
+    int datos_enviados = 0;
 
-    while(1)
+
+    while(!datos_enviados)
     {
-        printf("Waiting for data...");
+        printf("Waiting for data...\n");
         fflush(stdout);
          
         //try to receive some data, this is a blocking call
@@ -121,13 +127,28 @@ void *udp_handler(void * socket_desc){
          
         //print details of the client/peer and the data received
         printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-        printf("Data: %s\n" , data);
+        printf("Data: %s\n" , data); 
          
+       /*  printf("Ingrese data a enviar:\n");
+        gets(data); */
+
+        // Hay que ver como el cliente sabe en que puerto udp para recibir.
+        // Tambien hay que ver como se sincronizan TCP y UDP para hablar con un host en particular.
+        ext_port = ntohs(si_other.sin_port);
+
+        sockaddr_in dest_addr;
+        socklen_t slen_dst = sizeof(dest_addr);
+        dest_addr.sin_family=AF_INET;
+        dest_addr.sin_port= htons(ext_port);
+        dest_addr.sin_addr.s_addr=inet_addr(ext_ip);
+
         //now reply the client with the same data
-        if (sendto(udp_sock, data, recv_len, 0, (struct sockaddr*) &si_other, slen) == -1)
+        if (sendto(udp_sock, data, strlen(data), 0, (struct sockaddr*) &dest_addr, slen_dst) == -1)
         {
             exit_error("sendto()");
         }
+        printf("Sent packet to %s:%d\n", inet_ntoa(dest_addr.sin_addr), ntohs(dest_addr.sin_port));
+        datos_enviados = 1;
     }
 
     close(udp_sock);
@@ -168,7 +189,6 @@ void *tcp_handler(void *socket_desc){
         int received_data_size = recv(sock, data, data_size, 0);
 
         string message = data;
-        // puts(message.substr(0, 1).c_str());
 
         if (has_received(message, PLAY)){
             printf("Envio play\n");
