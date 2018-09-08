@@ -10,6 +10,9 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "protocolo.h"
+
+using namespace std;
 
 #define PORT 8888
 #define MY_IP "127.0.0.1"
@@ -19,6 +22,7 @@
 
 void *tcp_handler(void *);
 void *udp_handler();
+bool has_received(string, string);
 
 int main(){
     //primitiva SOCKET
@@ -61,6 +65,7 @@ int main(){
 
     return 0;
 }
+
 void *udp_handler(){
 
     while (TRUE){
@@ -100,19 +105,15 @@ void *tcp_handler(void *socket_desc){
 
         std::string message = data;
         // puts(message.substr(0, 1).c_str());
-        std::string play = "play";
-        std::string pause = "pause";
-        std::string stop = "stop";
-        std::string init = "init";
 
-        if (message.compare(0, play.length(), play) == 0){
+        if (has_received(message, PLAY)){
             printf("Envio play\n");
-        }else if (message.compare(0, pause.length(), pause) == 0){
+        }else if (has_received(message, PAUSE)){
             printf("Envio pause\n");
-        }else if (message.compare(0, stop.length(), stop) == 0){
+        }else if (has_received(message, STOP)){
             printf("Envio stop\n");
-        }else if (message.compare(0, init.length(), init) == 0){
-            std::string puerto_str = message.substr(init.length() + 1, received_data_size - 2).c_str();
+        }else if (has_received(message, INIT)){
+            std::string puerto_str = message.substr(INIT.length() + 1, received_data_size - 2).c_str();
             int puerto = std::stoi(puerto_str);
             printf("%d\n", puerto);
         }else
@@ -126,4 +127,8 @@ void *tcp_handler(void *socket_desc){
 
     close(sock);
     return 0;
+}
+
+bool has_received(string message, string command){
+    return (message.compare(0, command.length(), command) == 0);
 }
