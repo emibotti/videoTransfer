@@ -11,15 +11,13 @@
 #include <pthread.h>
 #include "protocolo.h"
 
-#include "opencv2/opencv.hpp"
-
 using namespace std;
 
 #define MY_IP "127.0.0.1"
 #define MAX_QUEUE 10
 #define MAX_MSG_SIZE 1024
 #define TRUE 1
-#define MAX_CLIENTS 5
+#define MAX_CLIENTS 10
 #define VIDEO_PATH "/home/video.avi"
 
 void *tcp_handler(void *);
@@ -28,21 +26,42 @@ bool has_received(string, string);
 int get_port_cmd(string, string);
 void exit_error(string);
 
-int ext_port = 8888;;
+int ext_port = 8888;
 const char* ext_ip = "127.0.0.1";
 
 struct Estados {
-   int  status[MAX_CLIENTS];
-   int  port[MAX_CLIENTS];
+   int  status;
+   int  port;
 };
- 
+
+struct Estados estados[MAX_CLIENTS];
+
+struct args_struct {
+    int socket;
+    int client_index;
+};
+
+int assign_free_position(){
+	//Busca un espacio sin cliente asignado 
+	printf("buscandoooo\n");
+	for(int i=0; i<MAX_CLIENTS; i++){
+		if(estados[i].status == -1){
+			estados[i].status = 0;
+			printf("fin busqueda OK\n");
+
+			return i;
+		}		
+	}
+	printf("fin busqueda ERR\n");
+	return -1;
+}
+
+
 int main(){
-	
-	struct Estados estados;
 
 	for(int i=0; i<MAX_CLIENTS; i++){
-		estados.status[i] = -1;
-		estados.port[i] = -1;
+		estados[i].status = -1;
+		estados[i].port = -1;
 	}
 
     //primitiva SOCKET
@@ -60,7 +79,14 @@ int main(){
     server_addr.sin_addr.s_addr = inet_addr(MY_IP);
 
     // Binding
-	PrimitivaBind(server_socket, &server_addr, server_addr_size, "TCP");
+	int binding = bind(
+		server_socket,
+		(struct sockaddr *)&server_addr,
+			server_addr_size);
+	if (binding == -1)
+		exit_error("Error al bindear socket TCP");
+	else
+		printf("Socket TCP binded");
 	
     // Listening
     int listening = listen(server_socket, MAX_QUEUE);
@@ -70,7 +96,8 @@ int main(){
         printf("Socket TCP escuchando en %s %d..", MY_IP, PORT);
     
     pthread_t thread_id;
-    pthread_t thread_id_2; 
+    pthread_t thread_id_2;
+
     // posteriormente crear un arreglo e ir poniendo los threads_id ahi
     // ver ejemplos http://man7.org/linux/man-pages/man3/pthread_create.3.html
 
@@ -82,23 +109,48 @@ int main(){
         int socket_to_client = accept(
             server_socket,
             (struct sockaddr *)&client_addr, &client_addr_size);
-        //Thread control (TCP)
-        pthread_create(&thread_id, NULL, tcp_handler, (void *)&socket_to_client);
 
+		//BUSCAR index_libre
+		int index = assign_free_position();
+		printf("Index libre: %d\n", index);
 
-		//Creo socket UDP
-		int udp_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-		if (udp_socket == -1)
-			exit_error("Error al crear socket udp");
-		else
-			printf("Socket udp creado..");
+		if (index == -1){
+			printf("Max clients reached");
+		}
+		else {
+			args_struct args_tcp;
+			args_tcp.socket = socket_to_client;
+			args_tcp.client_index = index;
 
-		PrimitivaBind(udp_socket, &server_addr, server_addr_size, "UDP");
-		
-        // Thread datos (UDP)
-        // Ver si pasar por parametro id del host, para sincronizar udp y tcp con mismo host.
-        pthread_create(&thread_id_2, NULL, udp_handler, (void*) &udp_socket);
-  
+			//Thread control (TCP)
+			pthread_create(&thread_id, NULL, tcp_handler, (void *)&args_tcp);
+
+			
+			//Creo socket UDP
+			int udp_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+			if (udp_socket == -1)
+				exit_error("Error al crear socket udp");
+			else
+				printf("Socket udp creado..\n");
+			
+			// Binding UDP
+			int binding = bind(
+				udp_socket,
+				(struct sockaddr *)&server_addr,
+					server_addr_size);
+			if (binding == -1)
+				exit_error("Error al bindear socket UDP");
+			else
+				printf("Socket UDP binded");
+				
+
+			// Thread datos (UDP)
+			// Ver si pasar por parametro id del host, para sincronizar udp y tcp con mismo host.
+			args_struct args_udp;
+			args_udp.socket = udp_socket;
+			args_udp.client_index = index;
+			pthread_create(&thread_id_2, NULL, udp_handler, (void *) &args_udp);
+		}
     }
      //CLOSE del socket que espera conexiones
     close(server_socket);
@@ -106,26 +158,37 @@ int main(){
     return 0;
 }
 
-void PrimitivaBind(int socket, (struct sockaddr *) sv_addr, int size, string type){
-	int binding = bind(
-		socket,
-		(struct sockaddr *)&sv_addr,
-			size);
-	if (binding == -1)
-		exit_error("Error al bindear socket " + "type");
-	else
-		printf("Socket " + type + " bindeado.");
-}
+void *udp_handler(void * argument){
+	
+	int aux =1;
+	printf("%d", aux);
+	aux ++;
 
-void *udp_handler(void * socket_desc){
+	args_struct args = *(args_struct*) argument;
+	printf("%d", aux);
+	aux ++;
 
-	int udp_sock = *(int *)socket_desc;
+	int udp_sock = *(int*)args.socket;
+	printf("%d", aux);
+	aux ++;
+
 	int recv_len;
+	printf("%d", aux);
+	aux ++;
+
 	char data[MAX_MSG_SIZE];
 
+	printf("%d", aux);
+	aux ++;
+
 	struct sockaddr_in si_other;
+	printf("%d", aux);
+	aux ++;
+
 	socklen_t slen = sizeof(si_other);
 	int datos_enviados = 0;
+
+	printf("Hilo UDP instancia\n");
 
 
 	while(!datos_enviados)
@@ -146,11 +209,9 @@ void *udp_handler(void * socket_desc){
 		/*  printf("Ingrese data a enviar:\n");
 		gets(data); */
 
-		//En i se tiene que pasar el numero de cliente que esta atendiendo este thread
-		int i = 0;
-
-		if(estados.status[i] == 1)
+		if(estados[args.client_index].status == 1)
 		{
+			/*
 			VideoCapture cap(VIDEO_PATH);
 				
 			if(cap.isOpened() == false)
@@ -159,14 +220,14 @@ void *udp_handler(void * socket_desc){
 			Mat frame;
 			cap.read(frame);
 			
-			udp_sock.sendto(estados.port[i], frame)
-			waitKey()	
+			udp_sock.sendto(estados[args.client_index].port, frame)
+			waitKey()
+			*/	
 		}
-		else if(estados.status[i] == 0)
-			sleep 1;
-		else if(estados.status[i] == 2)
-			cap.close();
-
+		else if(estados[args.client_index].status == 0)
+			sleep(1);
+		else if(estados[args.client_index].status == 2)
+			//cap.close();
 
 		// Hay que ver como el cliente sabe en que puerto udp para recibir.
 		// Tambien hay que ver como se sincronizan TCP y UDP para hablar con un host en particular.
@@ -189,17 +250,13 @@ void *udp_handler(void * socket_desc){
 
 	close(udp_sock);
 
-
-
-
-
 	return 0;
 }
 
-void *tcp_handler(void *socket_desc){
+void *tcp_handler(void * argument){
 	printf("\nRecibio conexion\n");
-	int client;
-	int sock = *(int *)socket_desc;
+	args_struct args = *(args_struct*) argument;
+	int sock = args.socket;
 
 	//primitiva RECEIVE
 	char data[MAX_MSG_SIZE];
@@ -207,23 +264,25 @@ void *tcp_handler(void *socket_desc){
 	int is_connected = 1;
 
 	while (is_connected){
+		printf("Hilo TCP receive\n");
 		int received_data_size = recv(sock, data, data_size, 0);
+		printf("Hilo TCP paso\n");
 
 		string message = data;
 
 		if (has_received(message, PLAY)){
 			printf("Envio play\n");
-			estados[client].status = 1;
+			estados[args.client_index].status = 1;
 		}else if (has_received(message, PAUSE)){
 			printf("Envio pause\n");
-			estados[client].status = 0;
+			estados[args.client_index].status = 0;
 		}else if (has_received(message, STOP)){
 			printf("Envio stop\n");
-			estados[client].status = 2;
+			estados[args.client_index].status = 2;
 		}else if (has_received(message, INIT)){
 			int port = get_port_cmd(message, INIT);
 			printf("%d\n", port);
-			client = assign_port(port);
+			estados[args.client_index].port = port;
 		}else
 			printf("Mensaje no reconocido\n");
 
@@ -235,17 +294,6 @@ void *tcp_handler(void *socket_desc){
 
 	close(sock);
 	return 0;
-}
-
-int assign_port(int port){
-	//Busca un espacio sin cliente asignado 
-	for(int i=0; i<MAX_CLIENTS; i++){
-		if(estados.port[i] == -1){
-			estados.port[i] = port;
-			return i;
-		}		
-	}
-	printf("Max Clients reached");
 }
 
 bool has_received(string message, string command){
