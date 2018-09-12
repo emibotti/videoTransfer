@@ -67,9 +67,9 @@ int main(){
     //primitiva SOCKET
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1)
-        exit_error("Error al crear socket tcp");
+        exit_error("Error al crear socket tcp\n");
     else
-        printf("Socket tcp creado..");
+        printf("Socket tcp creado..\n");
 
     // Config bind
     struct sockaddr_in server_addr;
@@ -84,16 +84,16 @@ int main(){
 		(struct sockaddr *)&server_addr,
 			server_addr_size);
 	if (binding == -1)
-		exit_error("Error al bindear socket TCP");
+		exit_error("Error al bindear socket TCP\n");
 	else
-		printf("Socket TCP binded");
+		printf("Socket TCP binded\n");
 	
     // Listening
     int listening = listen(server_socket, MAX_QUEUE);
      if (listening == -1)
-        exit_error("Error al intentar escuchar en socket TCP");
+        exit_error("Error al intentar escuchar en socket TCP\n");
     else
-        printf("Socket TCP escuchando en %s %d..", MY_IP, PORT);
+        printf("Socket TCP escuchando en %s %d..\n", MY_IP, PORT);
     
     pthread_t thread_id;
     pthread_t thread_id_2;
@@ -115,12 +115,14 @@ int main(){
 		printf("Index libre: %d\n", index);
 
 		if (index == -1){
-			printf("Max clients reached");
+			printf("Max clients reached\n");
 		}
 		else {
 			args_struct args_tcp;
 			args_tcp.socket = socket_to_client;
 			args_tcp.client_index = index;
+
+			printf("Socket cliente TCP: %d\n", socket_to_client);
 
 			//Thread control (TCP)
 			pthread_create(&thread_id, NULL, tcp_handler, (void *)&args_tcp);
@@ -129,26 +131,21 @@ int main(){
 			//Creo socket UDP
 			int udp_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 			if (udp_socket == -1)
-				exit_error("Error al crear socket udp");
+				exit_error("Error al crear socket udp\n");
 			else
 				printf("Socket udp creado..\n");
 			
-			// Binding UDP
-			int binding = bind(
-				udp_socket,
-				(struct sockaddr *)&server_addr,
-					server_addr_size);
-			if (binding == -1)
-				exit_error("Error al bindear socket UDP");
-			else
-				printf("Socket UDP binded");
-				
+
+			printf("Socket cliente UDP: %d\n", udp_socket);
+			
 
 			// Thread datos (UDP)
 			// Ver si pasar por parametro id del host, para sincronizar udp y tcp con mismo host.
 			args_struct args_udp;
 			args_udp.socket = udp_socket;
 			args_udp.client_index = index;
+
+			printf("args_udp: %d\n", args_udp.socket);
 			pthread_create(&thread_id_2, NULL, udp_handler, (void *) &args_udp);
 		}
     }
@@ -158,59 +155,26 @@ int main(){
     return 0;
 }
 
-void *udp_handler(void * argument){
+void *udp_handler(void * arguments){
 	
-	int aux =1;
-	printf("%d", aux);
-	aux ++;
-
-	args_struct args = *(args_struct*) argument;
-	printf("%d", aux);
-	aux ++;
-
-	int udp_sock = *(int*)args.socket;
-	printf("%d", aux);
-	aux ++;
-
+	printf("---------- UDP entra\n");
+	args_struct args = *(args_struct*) arguments;
+	printf("---------- UDP client index: %d\n", args.client_index);
+	
+	
+	int udp_sock = args.socket;
 	int recv_len;
-	printf("%d", aux);
-	aux ++;
-
 	char data[MAX_MSG_SIZE];
-
-	printf("%d", aux);
-	aux ++;
-
 	struct sockaddr_in si_other;
-	printf("%d", aux);
-	aux ++;
-
 	socklen_t slen = sizeof(si_other);
 	int datos_enviados = 0;
 
-	printf("Hilo UDP instancia\n");
-
-
 	while(!datos_enviados)
 	{
-		printf("Waiting for data...\n");
-		fflush(stdout);
-         
-		//try to receive some data, this is a blocking call
-		if ((recv_len = recvfrom(udp_sock, data, MAX_MSG_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
-		{
-			exit_error("recvfrom()");
-		}
-         
-		//print details of the client/peer and the data received
-		printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-		printf("Data: %s\n" , data); 
-         
-		/*  printf("Ingrese data a enviar:\n");
-		gets(data); */
 
 		if(estados[args.client_index].status == 1)
 		{
+			printf("---------- UDP tiene que enviar frames\n");
 			/*
 			VideoCapture cap(VIDEO_PATH);
 				
@@ -224,28 +188,19 @@ void *udp_handler(void * argument){
 			waitKey()
 			*/	
 		}
-		else if(estados[args.client_index].status == 0)
+		else if(estados[args.client_index].status == 0){
+			printf("---------- UDP pauso video\n");
 			sleep(1);
-		else if(estados[args.client_index].status == 2)
-			//cap.close();
-
-		// Hay que ver como el cliente sabe en que puerto udp para recibir.
-		// Tambien hay que ver como se sincronizan TCP y UDP para hablar con un host en particular.
-		ext_port = ntohs(si_other.sin_port);
-
-		sockaddr_in dest_addr;
-		socklen_t slen_dst = sizeof(dest_addr);
-		dest_addr.sin_family=AF_INET;
-		dest_addr.sin_port= htons(ext_port);
-		dest_addr.sin_addr.s_addr=inet_addr(ext_ip);
-
-		//now reply the client with the same data
-		if (sendto(udp_sock, data, strlen(data), 0, (struct sockaddr*) &dest_addr, slen_dst) == -1)
-		{
-			exit_error("sendto()");
 		}
-		printf("Sent packet to %s:%d\n", inet_ntoa(dest_addr.sin_addr), ntohs(dest_addr.sin_port));
-		datos_enviados = 1;
+		else if(estados[args.client_index].status == 2){
+			printf("---------- UDP le dio stop\n");
+			//cap.close();
+			datos_enviados = 1; // SACAR DE ACA
+
+		}
+
+		//datos_enviados = 1;
+
 	}
 
 	close(udp_sock);
@@ -253,9 +208,11 @@ void *udp_handler(void * argument){
 	return 0;
 }
 
+
 void *tcp_handler(void * argument){
-	printf("\nRecibio conexion\n");
+	printf("\n----- TCP Recibio conexion\n");
 	args_struct args = *(args_struct*) argument;
+	printf("\n----- TCP client index: %d\n", args.client_index);
 	int sock = args.socket;
 
 	//primitiva RECEIVE
@@ -264,32 +221,32 @@ void *tcp_handler(void * argument){
 	int is_connected = 1;
 
 	while (is_connected){
-		printf("Hilo TCP receive\n");
+		printf("----- TCP Hilo TCP receive\n");
 		int received_data_size = recv(sock, data, data_size, 0);
-		printf("Hilo TCP paso\n");
+		printf("----- TCP Hilo TCP paso\n");
 
 		string message = data;
 
 		if (has_received(message, PLAY)){
-			printf("Envio play\n");
+			printf("----- TCP Envio play\n");
 			estados[args.client_index].status = 1;
 		}else if (has_received(message, PAUSE)){
-			printf("Envio pause\n");
+			printf("----- TCP Envio pause\n");
 			estados[args.client_index].status = 0;
 		}else if (has_received(message, STOP)){
-			printf("Envio stop\n");
+			printf("----- TCP Envio stop\n");
 			estados[args.client_index].status = 2;
 		}else if (has_received(message, INIT)){
 			int port = get_port_cmd(message, INIT);
-			printf("%d\n", port);
+			printf("----- TCP INITI: %d\n", port);
 			estados[args.client_index].port = port;
 		}else
-			printf("Mensaje no reconocido\n");
+			printf("----- TCP Mensaje no reconocido\n");
 
 		//primitiva SEND
-		int sent_data_size = send(sock, data, received_data_size, 0);
-		printf("Enviado al cliente (%d bytes): %s\n", sent_data_size, data);
-		is_connected = 0;
+		//int sent_data_size = send(sock, data, received_data_size, 0);
+		//printf("Enviado al cliente (%d bytes): %s\n", sent_data_size, data);
+		//is_connected = 0;
 	} // Funciona con muchas terminales. Ahora que el servidor sepa el port.
 
 	close(sock);
