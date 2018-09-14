@@ -10,7 +10,10 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "protocolo.h"
+#include <opencv2/opencv.hpp>
+#include <iostream>
 
+using namespace cv;
 using namespace std;
 
 #define MY_IP "127.0.0.1"
@@ -18,13 +21,15 @@ using namespace std;
 #define MAX_MSG_SIZE 1024
 #define TRUE 1
 #define MAX_CLIENTS 10
-#define VIDEO_PATH "/home/video.avi"
+#define VIDEO_PATH "../videoplayback"
 
 void *tcp_handler(void *);
 void *udp_handler(void *);
-bool has_received(string, string);
-int get_port_cmd(string, string);
-void exit_error(string);
+bool has_received(std::string, std::string);
+int get_port_cmd(std::string, std::string);
+void exit_error(std::string);
+
+bool for_debug = true;
 
 int ext_port = 8888;
 const char* ext_ip = "127.0.0.1";
@@ -169,24 +174,54 @@ void *udp_handler(void * arguments){
 	socklen_t slen = sizeof(si_other);
 	int datos_enviados = 0;
 
-	while(!datos_enviados)
-	{
+	//open the video file for reading
+	VideoCapture cap("../videoplayback"); 
+
+	// if not success, exit program
+	if (cap.isOpened() == false) {
+		cout << "Cannot open the video file" << endl;
+		cin.get(); //wait for any key press
+		datos_enviados = 1;
+	}
+
+	String window_name = "Client" + to_string(args.client_index);
+	if (for_debug){
+		namedWindow(window_name, WINDOW_NORMAL); //create a window
+	}
+
+
+	while(!datos_enviados) {
 
 		if(estados[args.client_index].status == 1)
 		{
-			printf("---------- UDP tiene que enviar frames\n");
-			/*
-			VideoCapture cap(VIDEO_PATH);
-				
-			if(cap.isOpened() == false)
-				return;
 
 			Mat frame;
-			cap.read(frame);
-			
-			udp_sock.sendto(estados[args.client_index].port, frame)
-			waitKey()
-			*/	
+			bool bSuccess = cap.read(frame); // read a new frame from video 
+
+			//Breaking the while loop at the end of the video
+			if (bSuccess == false) {
+				cout << "Found the end of the video" << endl;
+				printf("---------- UDP fin del video\n");
+				cap.set(1, 0);
+				estados[args.client_index].status = 0;
+
+			}
+			else {
+				printf("---------- UDP tiene que enviar frame \n");
+
+
+				//show the frame in the created window
+				if (for_debug)
+					imshow(window_name, frame);
+
+				//wait for for 10 ms until any key is pressed.  
+				//If the 'Esc' key is pressed, break the while loop.
+				//If the any other key is pressed, continue the loop 
+				//If any key is not pressed withing 10 ms, continue the loop
+				if (waitKey(30) == 27) {
+					cout << "Esc key is pressed by user. Stoppig the video" << endl;
+				}
+			}
 		}
 		else if(estados[args.client_index].status == 0){
 			printf("---------- UDP pauso video\n");
@@ -194,13 +229,12 @@ void *udp_handler(void * arguments){
 		}
 		else if(estados[args.client_index].status == 2){
 			printf("---------- UDP le dio stop\n");
+			cap.set(1, 0);
+			estados[args.client_index].status = 0;
 			//cap.close();
-			datos_enviados = 1; // SACAR DE ACA
-
+			//datos_enviados = 1; // SACAR DE ACA
 		}
-
 		//datos_enviados = 1;
-
 	}
 
 	close(udp_sock);
@@ -225,7 +259,7 @@ void *tcp_handler(void * argument){
 		int received_data_size = recv(sock, data, data_size, 0);
 		printf("----- TCP Hilo TCP paso\n");
 
-		string message = data;
+		std::string message = data;
 
 		if (has_received(message, PLAY)){
 			printf("----- TCP Envio play\n");
@@ -253,17 +287,17 @@ void *tcp_handler(void * argument){
 	return 0;
 }
 
-bool has_received(string message, string command){
+bool has_received(std::string message, std::string command){
 	return (message.compare(0, command.length(), command) == 0);
 }
 
-int get_port_cmd(string message, string command){
-	string port_str = message.substr(command.length() + 1, message.length() - 2).c_str();
+int get_port_cmd(std::string message, std::string command){
+	std::string port_str = message.substr(command.length() + 1, message.length() - 2).c_str();
 	int port = stoi(port_str);
 	return port;
 }
 
-void exit_error(string err){
+void exit_error(std::string err){
 	printf("%s\n", err.c_str());
 	exit(1);
 }

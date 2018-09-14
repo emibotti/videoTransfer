@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-cap = cv2.VideoCapture('../../videoplayback')
+cap = cv2.VideoCapture('../videoplayback')
 cv2.namedWindow('frame', cv2.WINDOW_AUTOSIZE)
 
 while(True):
