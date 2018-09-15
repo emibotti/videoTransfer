@@ -1,0 +1,3 @@
+/home/ebotti/Redes/videoTransfer/src/CMakeFiles/rebuild_cache.dir
+/home/ebotti/Redes/videoTransfer/src/CMakeFiles/servidor.dir
+/home/ebotti/Redes/videoTransfer/src/CMakeFiles/edit_cache.dir
