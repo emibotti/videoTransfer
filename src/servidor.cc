@@ -23,6 +23,13 @@ using namespace std;
 #define MAX_CLIENTS 10
 #define VIDEO_PATH "../videoplayback"
 
+#define POS_LIBRE -1
+#define PAUSE_STATUS 0
+#define PLAY_STATUS 1
+#define STOP_STATUS 2
+#define WAITINGPORT_STATUS 3
+#define INIT_STATUS 4
+
 void *tcp_handler(void *);
 void *udp_handler(void *);
 bool has_received(std::string, std::string);
@@ -36,6 +43,7 @@ const char* ext_ip = "127.0.0.1";
 
 struct Estados {
    int  status;
+   char* ip;
    int  port;
 };
 
@@ -51,7 +59,7 @@ int assign_free_position(){
 	printf("buscandoooo\n");
 	for(int i=0; i<MAX_CLIENTS; i++){
 		if(estados[i].status == -1){
-			estados[i].status = 0;
+			estados[i].status = WAITINGPORT_STATUS;
 			printf("fin busqueda OK\n");
 
 			return i;
@@ -66,6 +74,7 @@ int main(){
 
 	for(int i=0; i<MAX_CLIENTS; i++){
 		estados[i].status = -1;
+		estados[i].ip = "";
 		estados[i].port = -1;
 	}
 
@@ -126,6 +135,7 @@ int main(){
 			args_struct args_tcp;
 			args_tcp.socket = socket_to_client;
 			args_tcp.client_index = index;
+			estados[index].ip = inet_ntoa(client_addr.sin_addr);
 
 			printf("Socket cliente TCP: %d\n", socket_to_client);
 
@@ -170,8 +180,7 @@ void *udp_handler(void * arguments){
 	int udp_sock = args.socket;
 	int recv_len;
 	char data[MAX_MSG_SIZE];
-	struct sockaddr_in si_other;
-	socklen_t slen = sizeof(si_other);
+	struct sockaddr_in udp_destino;
 	int datos_enviados = 0;
 
 	//open the video file for reading
@@ -189,11 +198,16 @@ void *udp_handler(void * arguments){
 		namedWindow(window_name, WINDOW_NORMAL); //create a window
 	}
 
+	socklen_t udp_destino_len;
 
 	while(!datos_enviados) {
 
-		if(estados[args.client_index].status == 1)
+		if(estados[args.client_index].status == PLAY_STATUS)
 		{
+			printf("---------- UDP tiene que enviar frame\n");
+			char* buf = "h";
+			if (sendto(udp_sock, buf, strlen(buf), 0, (struct sockaddr*) &udp_destino, udp_destino_len) == -1)
+				exit_error("Error en sendto");
 
 			Mat frame;
 			bool bSuccess = cap.read(frame); // read a new frame from video 
@@ -207,8 +221,6 @@ void *udp_handler(void * arguments){
 
 			}
 			else {
-				printf("---------- UDP tiene que enviar frame \n");
-
 
 				//show the frame in the created window
 				if (for_debug)
@@ -223,11 +235,19 @@ void *udp_handler(void * arguments){
 				}
 			}
 		}
-		else if(estados[args.client_index].status == 0){
+		else if(estados[args.client_index].status == PAUSE_STATUS){
 			printf("---------- UDP pauso video\n");
 			sleep(1);
 		}
-		else if(estados[args.client_index].status == 2){
+		else if(estados[args.client_index].status == INIT_STATUS){
+			udp_destino.sin_family = AF_INET;
+			udp_destino.sin_port = htons(estados[args.client_index].port);
+			udp_destino.sin_addr.s_addr = inet_addr(estados[args.client_index].ip);
+
+			udp_destino_len = sizeof(udp_destino);
+			estados[args.client_index].status = PAUSE_STATUS;
+		}
+		else if(estados[args.client_index].status == STOP_STATUS){
 			printf("---------- UDP le dio stop\n");
 			cap.set(1, 0);
 			estados[args.client_index].status = 0;
@@ -257,23 +277,30 @@ void *tcp_handler(void * argument){
 	while (is_connected){
 		printf("----- TCP Hilo TCP receive\n");
 		int received_data_size = recv(sock, data, data_size, 0);
+		if (received_data_size <= 0) {
+			// received_data_size = 0 -> connection closed
+			// received_data_size = 1 -> error
+			break;
+
+		}
 		printf("----- TCP Hilo TCP paso\n");
 
 		std::string message = data;
 
 		if (has_received(message, PLAY)){
 			printf("----- TCP Envio play\n");
-			estados[args.client_index].status = 1;
+			estados[args.client_index].status = PLAY_STATUS;
 		}else if (has_received(message, PAUSE)){
 			printf("----- TCP Envio pause\n");
-			estados[args.client_index].status = 0;
+			estados[args.client_index].status = PAUSE_STATUS;
 		}else if (has_received(message, STOP)){
 			printf("----- TCP Envio stop\n");
-			estados[args.client_index].status = 2;
+			estados[args.client_index].status = STOP_STATUS;
 		}else if (has_received(message, INIT)){
 			int port = get_port_cmd(message, INIT);
-			printf("----- TCP INITI: %d\n", port);
+			printf("----- TCP INIT: %d\n", port);
 			estados[args.client_index].port = port;
+			estados[args.client_index].status = INIT_STATUS;
 		}else
 			printf("----- TCP Mensaje no reconocido\n");
 
