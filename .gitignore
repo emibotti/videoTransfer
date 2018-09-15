@@ -1,2 +1,7 @@
 *.o
 src/servidor
+src/CMakeFiles
+src/CMakeFiles/*
+src/Makefile
+src/cmale_install.cmake
+src/CMakeCache.txt
