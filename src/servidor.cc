@@ -205,11 +205,9 @@ void *udp_handler(void * arguments){
 		if(estados[args.client_index].status == PLAY_STATUS)
 		{
 			printf("---------- UDP tiene que enviar frame\n");
-			char* buf = "h";
-			if (sendto(udp_sock, buf, strlen(buf), 0, (struct sockaddr*) &udp_destino, udp_destino_len) == -1)
-				exit_error("Error en sendto");
 
 			Mat frame;
+			
 			bool bSuccess = cap.read(frame); // read a new frame from video 
 
 			//Breaking the while loop at the end of the video
@@ -226,6 +224,16 @@ void *udp_handler(void * arguments){
 				if (for_debug)
 					imshow(window_name, frame);
 
+				vector<uchar> encoded; //vector para almacenar el frame codificado en jpeg
+				vector <int> compression_params;
+				compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
+				compression_params.push_back(80);
+				imencode(".jpg", frame, encoded, compression_params); 
+				
+				char* buf = "h";
+				if (sendto(udp_sock, encoded.data(), encoded.size(), 0, (struct sockaddr*) &udp_destino, udp_destino_len) == -1)
+					exit_error("Error en sendto");
+
 				//wait for for 10 ms until any key is pressed.  
 				//If the 'Esc' key is pressed, break the while loop.
 				//If the any other key is pressed, continue the loop 
@@ -233,6 +241,7 @@ void *udp_handler(void * arguments){
 				if (waitKey(30) == 27) {
 					cout << "Esc key is pressed by user. Stoppig the video" << endl;
 				}
+				// erase encoded?
 			}
 		}
 		else if(estados[args.client_index].status == PAUSE_STATUS){
