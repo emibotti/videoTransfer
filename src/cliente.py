@@ -24,7 +24,7 @@ INIT = "init"
 def udp_receiver(socket_udp):
     while(True):
         data, addr = socket_udp.recvfrom(1024)
-        print "UDP received message: %s" % data
+        print data
 
 def init_udp(socket_tcp, udp_port):
     message = 'init %d' % udp_port

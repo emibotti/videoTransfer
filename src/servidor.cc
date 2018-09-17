@@ -226,7 +226,7 @@ void *udp_handler(void * arguments){
 
 				vector<uchar> encoded; //vector para almacenar el frame codificado en jpeg
 				vector <int> compression_params;
-				compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
+				compression_params.push_back(IMWRITE_JPEG_QUALITY);
 				compression_params.push_back(80);
 				imencode(".jpg", frame, encoded, compression_params); 
 				
