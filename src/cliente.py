@@ -6,8 +6,11 @@ import numpy as np
 import cv2
 from threading import Lock, Thread
 
-SERVER_IP = "127.0.0.1"
+file = open('ip_server.txt', 'r')
+print file.read()
+SERVER_IP = file.read()
 SERVER_PORT = 8888
+NAME_WINDOW = "video"
 
 MAX_UDP_SIZE = 64000
 
@@ -29,7 +32,7 @@ lock = Lock()
 udp_closed = False
 
 def init_video():
-    cv2.namedWindow('frame', cv2.WINDOW_AUTOSIZE)
+    cv2.namedWindow(NAME_WINDOW, cv2.WINDOW_AUTOSIZE)
 
 def udp_receiver(socket_udp):
     init_video()
@@ -42,8 +45,7 @@ def udp_receiver(socket_udp):
         encoded = np.fromstring(encoded, np.uint8)
         frame = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
         resize = cv2.resize(frame,(1000,500))
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        cv2.imshow('frame', frame)
+        cv2.imshow(NAME_WINDOW, resize)
         cv2.waitKey(1000/30)
 
 def init_udp(socket_tcp, udp_port):
@@ -54,7 +56,6 @@ def send_msg(message):
     socket_tcp.sendall(message)
 
 def menu(socket_udp):
-    print "Thread menu creado"
     action = -1
     while (action != CLOSE_menu):
         print """Seleccionar una opcion:\n
@@ -80,7 +81,7 @@ socket_tcp = socket.socket( socket.AF_INET, socket.SOCK_STREAM)
 socket_udp = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
 
 # Se bindea socket udp
-socket_udp.bind(("127.0.0.1", 0)) #socket.gethostname()
+socket_udp.bind((socket.gethostname(), 0)) #socket.gethostname() o "127.0.0.1"
 udp_ip, udp_port = socket_udp.getsockname()
 
 print udp_ip

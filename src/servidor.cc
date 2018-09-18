@@ -29,7 +29,7 @@ using namespace std;
 #define STOP_STATUS 2
 #define WAITINGPORT_STATUS 3
 #define INIT_STATUS 4
-#define CLOSE_STATUS 5
+#define CLOSE_STATUS -1
 
 void *tcp_handler(void *);
 void *udp_handler(void *);
@@ -57,7 +57,6 @@ struct args_struct {
 
 int assign_free_position(){
 	//Busca un espacio sin cliente asignado 
-	printf("buscandoooo\n");
 	for(int i=0; i<MAX_CLIENTS; i++){
 		if(estados[i].status == -1){
 			estados[i].status = WAITINGPORT_STATUS;
@@ -196,9 +195,9 @@ void *udp_handler(void * arguments){
 	}
 
 	String window_name = "Client" + to_string(args.client_index);
-	/* if (for_debug){
+	if (for_debug){
 		namedWindow(window_name, WINDOW_NORMAL); //create a window
-	} */
+	} 
 
 	socklen_t udp_destino_len;
 
@@ -209,6 +208,7 @@ void *udp_handler(void * arguments){
 			// printf("---------- UDP tiene que enviar frame\n");
 
 			Mat frame;
+			Mat newFrame;
 			
 			bool bSuccess = cap.read(frame); // read a new frame from video 
 
@@ -223,8 +223,9 @@ void *udp_handler(void * arguments){
 			else {
 
 				//show the frame in the created window
-				/* if (for_debug)
-					imshow(window_name, frame); */
+				if (for_debug){
+					imshow(window_name, frame);
+				}
 
 				vector<uchar> encoded; //vector para almacenar el frame codificado en jpeg
 				vector <int> compression_params;
@@ -239,7 +240,7 @@ void *udp_handler(void * arguments){
 				//If the 'Esc' key is pressed, break the while loop.
 				//If the any other key is pressed, continue the loop 
 				//If any key is not pressed withing 10 ms, continue the loop
-				if (waitKey(30) == 27) {
+				if (waitKey(1000/30) == 27) {
 					cout << "Esc key is pressed by user. Stoppig the video" << endl;
 				}
 				// erase encoded?
