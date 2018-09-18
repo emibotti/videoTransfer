@@ -63,6 +63,8 @@ def menu(socket_udp):
         message = menu_actions.get(action, "close")
         if message != "close":
             send_msg(message)
+        else:
+            send_msg("close")
     print("Menu cerrado.")
     socket_udp.close()
 

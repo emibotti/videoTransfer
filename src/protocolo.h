@@ -12,5 +12,6 @@ static const string INIT = "init";
 static const string PLAY = "play";
 static const string PAUSE = "pause";
 static const string STOP = "stop";
+static const string CLOSE = "close";
 
 #endif

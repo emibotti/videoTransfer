@@ -29,6 +29,7 @@ using namespace std;
 #define STOP_STATUS 2
 #define WAITINGPORT_STATUS 3
 #define INIT_STATUS 4
+#define CLOSE_STATUS 5
 
 void *tcp_handler(void *);
 void *udp_handler(void *);
@@ -93,7 +94,8 @@ int main(){
     server_addr.sin_addr.s_addr = inet_addr(MY_IP);
 
     // Binding
-	int binding = bind(
+	// ref https://stackoverflow.com/questions/10035294/compiling-code-that-uses-socket-function-bind-with-libcxx-fails
+	int binding = ::bind(
 		server_socket,
 		(struct sockaddr *)&server_addr,
 			server_addr_size);
@@ -262,6 +264,11 @@ void *udp_handler(void * arguments){
 			//cap.close();
 			//datos_enviados = 1; // SACAR DE ACA
 		}
+		else if (estados[args.client_index].status == CLOSE_STATUS){
+			string hostIP = estados[args.client_index].ip;
+			printf("Se cierra UDP %s:%d\n", hostIP.c_str(), estados[args.client_index].port);
+			datos_enviados = 1;
+		}
 		//datos_enviados = 1;
 	}
 
@@ -309,6 +316,11 @@ void *tcp_handler(void * argument){
 			printf("----- TCP INIT: %d\n", port);
 			estados[args.client_index].port = port;
 			estados[args.client_index].status = INIT_STATUS;
+		}else if (has_received(message, CLOSE)){
+			string hostIP = estados[args.client_index].ip;
+			printf("Se cierra TCP %s:%d\n", hostIP.c_str(), estados[args.client_index].port);
+			estados[args.client_index].status = CLOSE_STATUS;
+			is_connected = 0; // break?
 		}else
 			printf("----- TCP Mensaje no reconocido\n");
 
