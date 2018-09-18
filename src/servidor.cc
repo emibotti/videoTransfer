@@ -268,8 +268,8 @@ void *udp_handler(void * arguments){
 		}
 		//datos_enviados = 1;
 	}
-
-	cvDestroyWindow(window_name);
+	const char *windowsname= "Client" + args.client_index;
+	cvDestroyWindow(windowsname);
 	close(udp_sock);
 
 	return 0;
