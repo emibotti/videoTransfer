@@ -10,6 +10,7 @@ file = open('ip_server.txt', 'r')
 print file.read()
 SERVER_IP = file.read()
 SERVER_PORT = 8888
+NAME_WINDOW = "video"
 
 MAX_UDP_SIZE = 64000
 
@@ -31,7 +32,7 @@ lock = Lock()
 udp_closed = False
 
 def init_video():
-    cv2.namedWindow('frame', cv2.WINDOW_AUTOSIZE)
+    cv2.namedWindow(NAME_WINDOW, cv2.WINDOW_AUTOSIZE)
 
 def udp_receiver(socket_udp):
     init_video()
@@ -44,8 +45,7 @@ def udp_receiver(socket_udp):
         encoded = np.fromstring(encoded, np.uint8)
         frame = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
         resize = cv2.resize(frame,(1000,500))
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        cv2.imshow('frame', frame)
+        cv2.imshow(NAME_WINDOW, resize)
         cv2.waitKey(1000/30)
 
 def init_udp(socket_tcp, udp_port):
