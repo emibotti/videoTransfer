@@ -269,7 +269,7 @@ void *udp_handler(void * arguments){
 		//datos_enviados = 1;
 	}
 
-	cv2.destroyWindow(window_name);
+	cvDestroyWindow(window_name);
 	close(udp_sock);
 
 	return 0;
