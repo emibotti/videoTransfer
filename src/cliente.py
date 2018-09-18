@@ -4,9 +4,11 @@ import sys
 import thread
 import numpy as np
 import cv2
+from threading import Lock, Thread
 
 SERVER_IP = "127.0.0.1"
 SERVER_PORT = 8888
+NAME_WINDOW = "video"
 
 MAX_UDP_SIZE = 64000
 
@@ -24,12 +26,15 @@ menu_actions = {
 
 INIT = "init"
 
+lock = Lock()
+udp_closed = False
+
 def init_video():
-    cv2.namedWindow('frame', cv2.WINDOW_AUTOSIZE)
+    cv2.namedWindow(NAME_WINDOW, cv2.WINDOW_AUTOSIZE)
 
 def udp_receiver(socket_udp):
     init_video()
-    while(True):
+    while(not udp_closed):
         try:
             encoded, addr = socket_udp.recvfrom(MAX_UDP_SIZE)
         except:
@@ -38,8 +43,7 @@ def udp_receiver(socket_udp):
         encoded = np.fromstring(encoded, np.uint8)
         frame = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
         resize = cv2.resize(frame,(1000,500))
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        cv2.imshow('frame', frame)
+        cv2.imshow(NAME_WINDOW, resize)
         cv2.waitKey(1000/30)
 
 def init_udp(socket_tcp, udp_port):
@@ -66,6 +70,7 @@ def menu(socket_udp):
         else:
             send_msg("close")
     print("Menu cerrado.")
+    udp_closed = True
     socket_udp.close()
 
 
@@ -86,10 +91,15 @@ socket_tcp.connect((SERVER_IP,SERVER_PORT))
 
 try:
     init_udp(socket_tcp, udp_port)
-    # init_video()
-    # thread.start_new_thread(udp_receiver, (socket_udp,))
-    thread.start_new_thread(menu, (socket_udp,))
-    udp_receiver(socket_udp)
+    thread.start_new_thread(udp_receiver, (socket_udp,))
+    # t = Thread(target=menu, args=(socket_udp, ), name='daemon')
+   #  t1 = Thread(target=udp_receiver, args=(socket_udp, ), name='daemon')
+    # t1.start()
+    # thread.start_new_thread(menu, (socket_udp,))
+    # udp_receiver(socket_udp)
+    menu(socket_udp)
+    # t.join()
+
 finally:
     #join thread?
     socket_tcp.close()
