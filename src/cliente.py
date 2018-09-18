@@ -6,7 +6,9 @@ import numpy as np
 import cv2
 from threading import Lock, Thread
 
-SERVER_IP = "127.0.0.1"
+file = open('ip_server.txt', 'r')
+print file.read()
+SERVER_IP = file.read()
 SERVER_PORT = 8888
 
 MAX_UDP_SIZE = 64000
@@ -54,7 +56,6 @@ def send_msg(message):
     socket_tcp.sendall(message)
 
 def menu(socket_udp):
-    print "Thread menu creado"
     action = -1
     while (action != CLOSE_menu):
         print """Seleccionar una opcion:\n
