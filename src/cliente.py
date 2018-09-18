@@ -81,7 +81,7 @@ socket_tcp = socket.socket( socket.AF_INET, socket.SOCK_STREAM)
 socket_udp = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
 
 # Se bindea socket udp
-socket_udp.bind((socket.gethostname(), 0)) #socket.gethostname() o "127.0.0.1"
+socket_udp.bind(("127.0.0.1", 0)) #socket.gethostname() o "127.0.0.1"
 udp_ip, udp_port = socket_udp.getsockname()
 
 print udp_ip
