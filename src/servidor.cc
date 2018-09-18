@@ -21,7 +21,7 @@ using namespace std;
 #define MAX_MSG_SIZE 1024
 #define TRUE 1
 #define MAX_CLIENTS 10
-#define VIDEO_PATH "../videoplayback"
+#define VIDEO_PATH "../video_prueba.mp4"
 
 #define POS_LIBRE -1
 #define PAUSE_STATUS 0
@@ -39,9 +39,6 @@ void exit_error(std::string);
 
 bool for_debug = true;
 
-int ext_port = 8888;
-const char* ext_ip = "127.0.0.1";
-
 struct Estados {
    int  status;
    char* ip;
@@ -58,7 +55,7 @@ struct args_struct {
 int assign_free_position(){
 	//Busca un espacio sin cliente asignado 
 	for(int i=0; i<MAX_CLIENTS; i++){
-		if(estados[i].status == -1){
+		if(estados[i].status == POS_LIBRE){
 			estados[i].status = WAITINGPORT_STATUS;
 			printf("fin busqueda OK\n");
 
@@ -73,7 +70,7 @@ int assign_free_position(){
 int main(){
 
 	for(int i=0; i<MAX_CLIENTS; i++){
-		estados[i].status = -1;
+		estados[i].status = POS_LIBRE;
 		estados[i].ip = "";
 		estados[i].port = -1;
 	}
@@ -185,7 +182,7 @@ void *udp_handler(void * arguments){
 	int datos_enviados = 0;
 
 	//open the video file for reading
-	VideoCapture cap("../videoplayback"); 
+	VideoCapture cap(VIDEO_PATH); 
 
 	// if not success, exit program
 	if (cap.isOpened() == false) {
@@ -232,7 +229,6 @@ void *udp_handler(void * arguments){
 				compression_params.push_back(IMWRITE_JPEG_QUALITY);
 				compression_params.push_back(80);
 				imencode(".jpg", frame, encoded, compression_params); 
-				char* buf = "h";
 				if (sendto(udp_sock, encoded.data(), encoded.size(), 0, (struct sockaddr*) &udp_destino, udp_destino_len) == -1)
 					exit_error("Error en sendto");
 
@@ -273,6 +269,7 @@ void *udp_handler(void * arguments){
 		//datos_enviados = 1;
 	}
 
+	cv2.destroyWindow(window_name);
 	close(udp_sock);
 
 	return 0;
