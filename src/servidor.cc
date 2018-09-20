@@ -37,7 +37,7 @@ bool has_received(std::string, std::string);
 int get_port_cmd(std::string, std::string);
 void exit_error(std::string);
 
-bool for_debug = true;
+bool for_debug = false;
 
 struct Estados {
    int  status;
@@ -162,6 +162,7 @@ int main(){
 			pthread_create(&thread_id_2, NULL, udp_handler, (void *) &args_udp);
 		}
     }
+    pthread_exit(NULL);
      //CLOSE del socket que espera conexiones
     close(server_socket);
 
@@ -175,7 +176,8 @@ void *udp_handler(void * arguments){
 	printf("---------- UDP client index: %d\n", args.client_index);
 	
 	
-	int udp_sock = args.socket;
+	// int udp_sock = args.socket;
+	int udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	int recv_len;
 	char data[MAX_MSG_SIZE];
 	struct sockaddr_in udp_destino;
@@ -268,11 +270,13 @@ void *udp_handler(void * arguments){
 		}
 		//datos_enviados = 1;
 	}
-
-	std::string x( "Client" + std::to_string(args.client_index));
-	char *y = new char[x.length() + 1];
-	std::strcpy(y, x.c_str());	
-	cv::destroyWindow(y);
+	if (for_debug){
+		std::string x( "Client" + std::to_string(args.client_index));
+		char *y = new char[x.length() + 1];
+		std::strcpy(y, x.c_str());	
+		cv::destroyWindow(y);
+	}
+	
 
 	return 0;
 }
