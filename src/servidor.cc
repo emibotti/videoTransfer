@@ -16,13 +16,13 @@
 using namespace cv;
 using namespace std;
 
-#define MY_IP "127.0.0.1"
+#define MY_IP "192.168.1.114"
 #define MAX_QUEUE 10
 #define MAX_MSG_SIZE 1024
 #define TRUE 1
 #define MAX_CLIENTS 10
 #define VIDEO_PATH "../videoplayback"
-// "../videoplayback"
+
 #define POS_LIBRE -1
 #define PAUSE_STATUS 0
 #define PLAY_STATUS 1
@@ -236,7 +236,7 @@ void *udp_handler(void * arguments){
 				//If the 'Esc' key is pressed, break the while loop.
 				//If the any other key is pressed, continue the loop 
 				//If any key is not pressed withing 10 ms, continue the loop
-				if (waitKey(1000/30) == 27) {
+				if (waitKey(1000/20) == 27) {
 					cout << "Esc key is pressed by user. Stoppig the video" << endl;
 				}
 				// erase encoded?
@@ -272,7 +272,7 @@ void *udp_handler(void * arguments){
 	std::string x( "Client" + std::to_string(args.client_index));
 	char *y = new char[x.length() + 1];
 	std::strcpy(y, x.c_str());	
-	cvDestroyWindow(y);
+	cv::destroyWindow(y);
 
 	return 0;
 }
