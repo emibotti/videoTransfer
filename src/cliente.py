@@ -6,7 +6,9 @@ import numpy as np
 import cv2
 from threading import Lock, Thread
 
-SERVER_IP = "127.0.0.1"
+file = open('ip_server.txt', 'r')
+print file.read()
+SERVER_IP = file.read()
 SERVER_PORT = 8888
 NAME_WINDOW = "video"
 
@@ -54,7 +56,6 @@ def send_msg(message):
     socket_tcp.sendall(message)
 
 def menu(socket_udp):
-    print "Thread menu creado"
     action = -1
     while (action != CLOSE_menu):
         print """Seleccionar una opcion:\n
@@ -80,7 +81,7 @@ socket_tcp = socket.socket( socket.AF_INET, socket.SOCK_STREAM)
 socket_udp = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
 
 # Se bindea socket udp
-socket_udp.bind(("127.0.0.1", 0)) #socket.gethostname()
+socket_udp.bind(("127.0.0.1", 0)) #socket.gethostname() o "127.0.0.1"
 udp_ip, udp_port = socket_udp.getsockname()
 
 print udp_ip

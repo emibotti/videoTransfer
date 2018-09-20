@@ -37,7 +37,7 @@ bool has_received(std::string, std::string);
 int get_port_cmd(std::string, std::string);
 void exit_error(std::string);
 
-bool for_debug = false;
+bool for_debug = true;
 
 struct Estados {
    int  status;
@@ -228,7 +228,7 @@ void *udp_handler(void * arguments){
 				vector <int> compression_params;
 				compression_params.push_back(IMWRITE_JPEG_QUALITY);
 				compression_params.push_back(80);
-				imencode(".jpeg", frame, encoded, compression_params); 
+				imencode(".jpg", frame, encoded, compression_params); 
 				if (sendto(udp_sock, encoded.data(), encoded.size(), 0, (struct sockaddr*) &udp_destino, udp_destino_len) == -1)
 					exit_error("Error en sendto");
 
@@ -268,8 +268,26 @@ void *udp_handler(void * arguments){
 		}
 		//datos_enviados = 1;
 	}
+	printf ("Salio del while \n");
+	char index [10];
+	std::string x( "Client" + std::to_string(args.client_index));
+	printf ("printeando  %s\n", x.c_str());
+	char *y = new char[x.length() + 1];
+	printf ("Llega 1\n");
+	printf ("Llega 1.5\n");
+	std::strcpy(y, x.c_str());	
+	printf ("lLega 2");
+	printf ("lLega 3");
 
+	//cvDestroyWindow(x);
+/*
+
+	sprintf(index, "%d", args.client_index);
+	printf ("cerrando %s", strcat("Client", index));
+	cvDestroyWindow(strcat("Client", index));
 	close(udp_sock);
+	*/
+
 
 	return 0;
 }
