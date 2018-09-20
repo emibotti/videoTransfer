@@ -7,8 +7,9 @@ import cv2
 from threading import Lock, Thread
 
 file = open('ip_server.txt', 'r')
+ip = file.read()
 print file.read()
-SERVER_IP = file.read()
+SERVER_IP = ip
 SERVER_PORT = 8888
 NAME_WINDOW = "video"
 
@@ -44,7 +45,7 @@ def udp_receiver(socket_udp):
             return 
         encoded = np.fromstring(encoded, np.uint8)
         frame = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
-        resize = cv2.resize(frame,(1000,500))
+        resize = cv2.resize(frame,(300,300))
         cv2.imshow(NAME_WINDOW, resize)
         cv2.waitKey(1000/30)
 
@@ -74,14 +75,29 @@ def menu(socket_udp):
     udp_closed = True
     socket_udp.close()
 
+def get_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
 
 # Se crea socket tcp y udp en internet
 
 socket_tcp = socket.socket( socket.AF_INET, socket.SOCK_STREAM)
 socket_udp = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
 
+
 # Se bindea socket udp
-socket_udp.bind(("127.0.0.1", 0)) #socket.gethostname() o "127.0.0.1"
+
+myip = get_ip()
+print myip
+socket_udp.bind((myip, 0)) #socket.gethostname() o "127.0.0.1"
 udp_ip, udp_port = socket_udp.getsockname()
 
 print udp_ip
