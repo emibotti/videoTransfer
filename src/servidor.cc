@@ -268,26 +268,11 @@ void *udp_handler(void * arguments){
 		}
 		//datos_enviados = 1;
 	}
-	printf ("Salio del while \n");
-	char index [10];
+
 	std::string x( "Client" + std::to_string(args.client_index));
-	printf ("printeando  %s\n", x.c_str());
 	char *y = new char[x.length() + 1];
-	printf ("Llega 1\n");
-	printf ("Llega 1.5\n");
 	std::strcpy(y, x.c_str());	
-	printf ("lLega 2");
-	printf ("lLega 3");
-
-	//cvDestroyWindow(x);
-/*
-
-	sprintf(index, "%d", args.client_index);
-	printf ("cerrando %s", strcat("Client", index));
-	cvDestroyWindow(strcat("Client", index));
-	close(udp_sock);
-	*/
-
+	cvDestroyWindow(y);
 
 	return 0;
 }
