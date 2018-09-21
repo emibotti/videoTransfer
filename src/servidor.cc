@@ -17,7 +17,7 @@
 using namespace cv;
 using namespace std;
 
-#define MY_IP "172.16.140.166"
+#define MY_IP "192.168.1.112"
 #define MAX_QUEUE 10
 #define MAX_MSG_SIZE 1024
 #define TRUE 1
@@ -65,24 +65,21 @@ int assign_free_position(){
 	for(int i=0; i<MAX_CLIENTS; i++){
 		if(estados[i].status == POS_LIBRE){
 			estados[i].status = WAITINGPORT_STATUS;
-			printf("fin busqueda OK\n");
-
+			printf("Fin busqueda OK.\n");
 			return i;
 		}		
 	}
-	printf("fin busqueda ERR\n");
+	printf("Fin busqueda ERR.\n");
 	return -1;
 }
 
 void my_handler(int s){
-	printf("Caught close signal %d\n",s);
+	printf("Caught close signal \n");
 	close(server_socket);
 	exit(1); 
-
 }
 
-int main(){
-
+void force_exit_handler(){
 	struct sigaction sigIntHandler;
 
 	sigIntHandler.sa_handler = my_handler;
@@ -90,21 +87,32 @@ int main(){
 	sigIntHandler.sa_flags = 0;
 
 	sigaction(SIGINT, &sigIntHandler, NULL);
+}
 
+void init_estados(){
 	for(int i=0; i<MAX_CLIENTS; i++){
 		estados[i].status = POS_LIBRE;
-		estados[i].ip = "";
+		estados[i].ip;
 		estados[i].port = -1;
 		estados[i].tcpThreadID = 0;
 		estados[i].udpThreadID = 0;
 	}
+}
 
-    //primitiva SOCKET
+int main(){
+
+	//Handler para el CTRL + C
+	force_exit_handler();
+
+	//Inicializo estructura estados
+	init_estados();
+
+    //Primitiva SOCKET
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1)
-        exit_error("Error al crear socket tcp\n");
+        exit_error("Error al crear socket TCP.\n");
     else
-        printf("Socket tcp creado..\n");
+        printf("Socket TCP creado.\n");
 
     // Config bind
     struct sockaddr_in server_addr;
@@ -120,38 +128,33 @@ int main(){
 		(struct sockaddr *)&server_addr,
 			server_addr_size);
 	if (binding == -1)
-		exit_error("Error al bindear socket TCP\n");
+		exit_error("Error al bindear socket TCP.\n");
 	else
-		printf("Socket TCP binded\n");
+		printf("Socket TCP binded.\n");
 	
     // Listening
     int listening = listen(server_socket, MAX_QUEUE);
      if (listening == -1)
-        exit_error("Error al intentar escuchar en socket TCP\n");
+        exit_error("Error al intentar escuchar en socket TCP.\n");
     else
-        printf("Socket TCP escuchando en %s %d..\n", MY_IP, PORT);
-    
-    pthread_t thread_id;
-    pthread_t thread_id_2;
-
-    // posteriormente crear un arreglo e ir poniendo los threads_id ahi
-    // ver ejemplos http://man7.org/linux/man-pages/man3/pthread_create.3.html
+        printf("Socket TCP escuchando en %s %d.\n", MY_IP, PORT);
 
     while (1){
         printf("Esperando un accept (TCP)...\n");
-        //primitiva ACCEPT
+        
+		//Primitiva ACCEPT
         struct sockaddr_in client_addr;
         socklen_t client_addr_size = sizeof client_addr;
         int socket_to_client = accept(
             server_socket,
             (struct sockaddr *)&client_addr, &client_addr_size);
 
-		//BUSCAR index_libre
+		//Buscar index_libre
 		int index = assign_free_position();
 		printf("Index libre: %d\n", index);
 
 		if (index == -1){
-			printf("Max clients reached\n");
+			printf("Max clients reached.\n");
 		}
 		else {
 			
@@ -164,29 +167,23 @@ int main(){
 			//Thread control (TCP)
 			pthread_create(&estados[index].tcpThreadID, NULL, tcp_handler, (void *)&argumentos[index]);
 
-			
 			//Creo socket UDP
 			int udp_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 			if (udp_socket == -1)
-				exit_error("Error al crear socket udp\n");
+				exit_error("Error al crear socket UDP.\n");
 			else
-				printf("Socket udp creado..\n");
+				printf("Socket UDP creado.\n");
 			
 
 			printf("%d Socket cliente UDP: %d\n",index,udp_socket);
 		
 
-			// Thread datos (UDP)
-			// Ver si pasar por parametro id del host, para sincronizar udp y tcp con mismo host.
-			
+			// Thread datos (UDP)			
 			argumentos[index].socketUDP = udp_socket;
-
-			//printf("args_udp: %d\n", args_udp.socket);
 			pthread_create(&estados[index].udpThreadID, NULL, udp_handler, (void *) &argumentos[index]);
 		}
     }
     pthread_exit(NULL);
-     //CLOSE del socket que espera conexiones
     close(server_socket);
 
     return 0;
@@ -206,20 +203,22 @@ void *udp_handler(void * arguments){
 	struct sockaddr_in udp_destino;
 	int datos_enviados = 0;
 
-	//open the video file for reading
+	//Open the video file for reading
 	VideoCapture cap(VIDEO_PATH); 
 
-	// if not success, exit program
+	//If not successful, exit program
 	if (cap.isOpened() == false) {
 		cout << "Cannot open the video file" << endl;
 		cin.get(); //wait for any key press
 		datos_enviados = 1;
 	}
 
+	
+	String window_name;
 
-	String window_name = "Client" + to_string(args.client_index);
 	if (for_debug){
-		namedWindow(window_name, WINDOW_NORMAL); //create a window
+		window_name = "Client" + to_string(args.client_index);
+		namedWindow(window_name, WINDOW_NORMAL);
 	} 
 
 	socklen_t udp_destino_len;
@@ -228,23 +227,19 @@ void *udp_handler(void * arguments){
 
 		if(estados[args.client_index].status == PLAY_STATUS)
 		{
-			// printf("---------- UDP tiene que enviar frame\n");
-
 			Mat frame;
-			
-			bool bSuccess = cap.read(frame); // read a new frame from video 
+			bool bSuccess = cap.read(frame);
 
 			//Breaking the while loop at the end of the video
 			if (bSuccess == false) {
-				cout << "Found the end of the video" << endl;
-				printf("%d ---------- UDP fin del video\n", args.client_index);
+				cout << "Found the end of the video." << endl;
+				printf("%d ---------- UDP fin del video.\n", args.client_index);
 				cap.set(1, 0);
 				estados[args.client_index].status = 0;
-
 			}
 			else {
 
-				//show the frame in the created window
+				//Show the frame in the created window
 				if (for_debug){
 					imshow(window_name, frame);
 					printf("%d ----------Waitkey\n", args.client_index);
@@ -253,34 +248,23 @@ void *udp_handler(void * arguments){
 				usleep(30000);
 				//waitKey(1000/30);
 
-				vector<uchar> encoded; //vector para almacenar el frame codificado en jpeg
+				vector<uchar> encoded; //vector para almacenar el frame codificado en jpg
 				vector <int> compression_params;
 				compression_params.push_back(IMWRITE_JPEG_QUALITY);
 				compression_params.push_back(80);
 								
 				bool is_encoded = imencode(".jpg", frame, encoded, compression_params); 
 				if (!is_encoded)
-					exit_error("Error al hacer encode de frame");
+					exit_error("Error al hacer encode de frame.");
 				if (encoded.size() < 1)
-					exit_error("Frame encoded generado es null");
+					exit_error("Frame encoded generado es null.");
  
 				if (sendto(udp_sock, encoded.data(), encoded.size(), 0, (struct sockaddr*) &udp_destino, udp_destino_len) == -1)
-					exit_error("Error en sendto");
-
-				//wait for for 10 ms until any key is pressed.  
-				//If the 'Esc' key is pressed, break the while loop.
-				//If the any other key is pressed, continue the loop 
-				//If any key is not pressed withing 10 ms, continue the loop
-				/*if (waitKey(1000/30) == 27) {
-					cout << "Esc key is pressed by user. Stoppig the video" << endl;
-				}
-				*/
-
-				// erase encoded?
+					exit_error("Error en sendto.");
 			}
 		}
 		else if(estados[args.client_index].status == PAUSE_STATUS){
-			printf("%d ---------- UDP pauso video\n", args.client_index);
+			printf("%d ---------- UDP pauso video.\n", args.client_index);
 			sleep(1);
 		}
 		else if(estados[args.client_index].status == INIT_STATUS){
@@ -295,48 +279,39 @@ void *udp_handler(void * arguments){
 			printf("%d ---------- UDP le dio stop\n", args.client_index);
 			cap.set(1, 0);
 			estados[args.client_index].status = 0;
-			//cap.close();
-			//datos_enviados = 1; // SACAR DE ACA
 		}
 		else if (estados[args.client_index].status == CLOSE_STATUS){
 			string hostIP = estados[args.client_index].ip;
 			printf("Se cierra UDP %s:%d\n", hostIP.c_str(), estados[args.client_index].port);
 			datos_enviados = 1;
 		}
-		//datos_enviados = 1;
 	}
+
 	if (for_debug){
 		std::string x( "Client" + std::to_string(args.client_index));
 		char *y = new char[x.length() + 1];
 		std::strcpy(y, x.c_str());	
 		cv::destroyWindow(y);
 	}
-	
 
 	return 0;
 }
 
 void *tcp_handler(void * argument){
-	printf("\n----- TCP Recibio conexion\n");
+	printf("\n----- TCP Recibio conexion.\n");
 	args_struct args = *(args_struct*) argument;
 	printf("\n----- TCP client index: %d\n", args.client_index);
 	int sock = args.socketTCP;
 
-	//primitiva RECEIVE
+	//Primitiva Receive
 	char data[MAX_MSG_SIZE];
 	int data_size = MAX_MSG_SIZE;
 	int is_connected = 1;
 
 	while (is_connected){
-		printf("----- TCP Hilo TCP receive\n");
+		printf("----- TCP Hilo receive.\n");
 		int received_data_size = recv(sock, data, data_size, 0);
-		if (received_data_size <= 0) {
-			// received_data_size = 0 -> connection closed
-			// received_data_size = 1 -> error
-			break;
-
-		}
-		printf("----- TCP Hilo TCP paso\n");
+		printf("----- TCP Hilo paso.\n");
 
 		std::string message = data;
 
@@ -360,15 +335,10 @@ void *tcp_handler(void * argument){
 			estados[args.client_index].status = CLOSE_STATUS;
 			is_connected = 0;
 		}else
-			printf("----- TCP Mensaje no reconocido\n");
+			printf("----- TCP Mensaje no reconocido.\n");
 
 		memset(data, 0, sizeof(data)); 
-
-		//primitiva SEND
-		//int sent_data_size = send(sock, data, received_data_size, 0);
-		//printf("Enviado al cliente (%d bytes): %s\n", sent_data_size, data);
-		//is_connected = 0;
-	} // Funciona con muchas terminales. Ahora que el servidor sepa el port.
+	}
 
 	close(sock);
 	return 0;
@@ -383,7 +353,6 @@ bool has_received_port(std::string message, std::string command){
 
 	return (message.compare(0, command.length(), command) == 0);
 }
-
 
 int get_port_cmd(std::string message, std::string command){
 	std::string port_str = message.substr(command.length() + 1, message.length() - 2).c_str();

@@ -67,7 +67,7 @@ def menu(socket_udp):
             """
         action = input("")
         message = menu_actions.get(action, "close")
-        if message != "close":
+        if message and message != "close":
             send_msg(message)
         else:
             send_msg("close")
