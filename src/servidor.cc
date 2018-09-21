@@ -35,6 +35,7 @@ using namespace std;
 void *tcp_handler(void *);
 void *udp_handler(void *);
 bool has_received(std::string, std::string);
+bool has_received_port(std::string, std::string); 
 int get_port_cmd(std::string, std::string);
 void exit_error(std::string);
 
@@ -339,7 +340,12 @@ void *tcp_handler(void * argument){
 
 		std::string message = data;
 
-		if (has_received(message, PLAY)){
+		if (has_received_port(message, INIT)){
+			int port = get_port_cmd(message, INIT);
+			printf("----- TCP INIT: %d\n", port);
+			estados[args.client_index].port = port;
+			estados[args.client_index].status = INIT_STATUS;
+		}else if (has_received(message, PLAY)){
 			printf("----- TCP Envio play\n");
 			estados[args.client_index].status = PLAY_STATUS;
 		}else if (has_received(message, PAUSE)){
@@ -348,18 +354,15 @@ void *tcp_handler(void * argument){
 		}else if (has_received(message, STOP)){
 			printf("----- TCP Envio stop\n");
 			estados[args.client_index].status = STOP_STATUS;
-		}else if (has_received(message, INIT)){
-			int port = get_port_cmd(message, INIT);
-			printf("----- TCP INIT: %d\n", port);
-			estados[args.client_index].port = port;
-			estados[args.client_index].status = INIT_STATUS;
 		}else if (has_received(message, CLOSE)){
 			string hostIP = estados[args.client_index].ip;
 			printf("Se cierra TCP %s:%d\n", hostIP.c_str(), estados[args.client_index].port);
 			estados[args.client_index].status = CLOSE_STATUS;
-			is_connected = 0; // break?
+			is_connected = 0;
 		}else
 			printf("----- TCP Mensaje no reconocido\n");
+
+		memset(data, 0, sizeof(data)); 
 
 		//primitiva SEND
 		//int sent_data_size = send(sock, data, received_data_size, 0);
@@ -372,8 +375,15 @@ void *tcp_handler(void * argument){
 }
 
 bool has_received(std::string message, std::string command){
+
+	return (message.compare(0, message.length(), command) == 0);
+}
+
+bool has_received_port(std::string message, std::string command){
+
 	return (message.compare(0, command.length(), command) == 0);
 }
+
 
 int get_port_cmd(std::string message, std::string command){
 	std::string port_str = message.substr(command.length() + 1, message.length() - 2).c_str();
