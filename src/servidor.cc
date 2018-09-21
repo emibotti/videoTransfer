@@ -230,7 +230,11 @@ void *udp_handler(void * arguments){
 				vector <int> compression_params;
 				compression_params.push_back(IMWRITE_JPEG_QUALITY);
 				compression_params.push_back(80);
-				imencode(".jpg", frame, encoded, compression_params); 
+				bool is_encoded = imencode(".jpg", frame, encoded, compression_params); 
+				if (!is_encoded)
+					exit_error("Error al hacer encode de frame");
+				if (encoded.size() < 1)
+					exit_error("Frame encoded generado es null");
 				if (sendto(udp_sock, encoded.data(), encoded.size(), 0, (struct sockaddr*) &udp_destino, udp_destino_len) == -1)
 					exit_error("Error en sendto");
 
