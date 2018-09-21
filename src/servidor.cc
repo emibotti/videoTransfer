@@ -16,12 +16,12 @@
 using namespace cv;
 using namespace std;
 
-#define MY_IP "192.168.1.114"
+#define MY_IP "192.168.1.112"
 #define MAX_QUEUE 10
 #define MAX_MSG_SIZE 1024
 #define TRUE 1
 #define MAX_CLIENTS 10
-#define VIDEO_PATH "../videoplayback"
+#define VIDEO_PATH "../video_prueba.mp4"
 
 #define POS_LIBRE -1
 #define PAUSE_STATUS 0
@@ -37,20 +37,26 @@ bool has_received(std::string, std::string);
 int get_port_cmd(std::string, std::string);
 void exit_error(std::string);
 
-bool for_debug = false;
+bool for_debug = true;
 
 struct Estados {
    int  status;
    char* ip;
    int  port;
+   pthread_t tcpThreadID;
+   pthread_t udpThreadID;
+};
+
+struct args_struct {
+    int socketTCP;
+	int socketUDP;
+    int client_index;
 };
 
 struct Estados estados[MAX_CLIENTS];
+struct args_struct argumentos[MAX_CLIENTS];
 
-struct args_struct {
-    int socket;
-    int client_index;
-};
+
 
 int assign_free_position(){
 	//Busca un espacio sin cliente asignado 
@@ -73,6 +79,8 @@ int main(){
 		estados[i].status = POS_LIBRE;
 		estados[i].ip = "";
 		estados[i].port = -1;
+		estados[i].tcpThreadID = 0;
+		estados[i].udpThreadID = 0;
 	}
 
     //primitiva SOCKET
@@ -130,15 +138,15 @@ int main(){
 			printf("Max clients reached\n");
 		}
 		else {
-			args_struct args_tcp;
-			args_tcp.socket = socket_to_client;
-			args_tcp.client_index = index;
+			
+			argumentos[index].socketTCP = socket_to_client;
+			argumentos[index].client_index = index;
 			estados[index].ip = inet_ntoa(client_addr.sin_addr);
 
-			printf("Socket cliente TCP: %d\n", socket_to_client);
+			printf("%d Socket cliente TCP: %d\n", index,socket_to_client);
 
 			//Thread control (TCP)
-			pthread_create(&thread_id, NULL, tcp_handler, (void *)&args_tcp);
+			pthread_create(&estados[index].tcpThreadID, NULL, tcp_handler, (void *)&argumentos[index]);
 
 			
 			//Creo socket UDP
@@ -149,17 +157,16 @@ int main(){
 				printf("Socket udp creado..\n");
 			
 
-			printf("Socket cliente UDP: %d\n", udp_socket);
-			
+			printf("%d Socket cliente UDP: %d\n",index,udp_socket);
+		
 
 			// Thread datos (UDP)
 			// Ver si pasar por parametro id del host, para sincronizar udp y tcp con mismo host.
-			args_struct args_udp;
-			args_udp.socket = udp_socket;
-			args_udp.client_index = index;
+			
+			argumentos[index].socketUDP = udp_socket;
 
-			printf("args_udp: %d\n", args_udp.socket);
-			pthread_create(&thread_id_2, NULL, udp_handler, (void *) &args_udp);
+			//printf("args_udp: %d\n", args_udp.socket);
+			pthread_create(&estados[index].udpThreadID, NULL, udp_handler, (void *) &argumentos[index]);
 		}
     }
     pthread_exit(NULL);
@@ -176,8 +183,8 @@ void *udp_handler(void * arguments){
 	printf("---------- UDP client index: %d\n", args.client_index);
 	
 	
-	// int udp_sock = args.socket;
-	int udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	int udp_sock = args.socketUDP;
+	//int udp_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	int recv_len;
 	char data[MAX_MSG_SIZE];
 	struct sockaddr_in udp_destino;
@@ -214,7 +221,7 @@ void *udp_handler(void * arguments){
 			//Breaking the while loop at the end of the video
 			if (bSuccess == false) {
 				cout << "Found the end of the video" << endl;
-				printf("---------- UDP fin del video\n");
+				printf("%d ---------- UDP fin del video\n", args.client_index);
 				cap.set(1, 0);
 				estados[args.client_index].status = 0;
 
@@ -230,7 +237,13 @@ void *udp_handler(void * arguments){
 				vector <int> compression_params;
 				compression_params.push_back(IMWRITE_JPEG_QUALITY);
 				compression_params.push_back(80);
-				imencode(".jpg", frame, encoded, compression_params); 
+								
+				bool is_encoded = imencode(".jpg", frame, encoded, compression_params); 
+				if (!is_encoded)
+					exit_error("Error al hacer encode de frame");
+				if (encoded.size() < 1)
+					exit_error("Frame encoded generado es null");
+ 
 				if (sendto(udp_sock, encoded.data(), encoded.size(), 0, (struct sockaddr*) &udp_destino, udp_destino_len) == -1)
 					exit_error("Error en sendto");
 
@@ -238,14 +251,14 @@ void *udp_handler(void * arguments){
 				//If the 'Esc' key is pressed, break the while loop.
 				//If the any other key is pressed, continue the loop 
 				//If any key is not pressed withing 10 ms, continue the loop
-				if (waitKey(1000/20) == 27) {
+				if (waitKey(1000/30) == 27) {
 					cout << "Esc key is pressed by user. Stoppig the video" << endl;
 				}
 				// erase encoded?
 			}
 		}
 		else if(estados[args.client_index].status == PAUSE_STATUS){
-			printf("---------- UDP pauso video\n");
+			printf("%d ---------- UDP pauso video\n", args.client_index);
 			sleep(1);
 		}
 		else if(estados[args.client_index].status == INIT_STATUS){
@@ -257,7 +270,7 @@ void *udp_handler(void * arguments){
 			estados[args.client_index].status = PAUSE_STATUS;
 		}
 		else if(estados[args.client_index].status == STOP_STATUS){
-			printf("---------- UDP le dio stop\n");
+			printf("%d ---------- UDP le dio stop\n", args.client_index);
 			cap.set(1, 0);
 			estados[args.client_index].status = 0;
 			//cap.close();
@@ -286,7 +299,7 @@ void *tcp_handler(void * argument){
 	printf("\n----- TCP Recibio conexion\n");
 	args_struct args = *(args_struct*) argument;
 	printf("\n----- TCP client index: %d\n", args.client_index);
-	int sock = args.socket;
+	int sock = args.socketTCP;
 
 	//primitiva RECEIVE
 	char data[MAX_MSG_SIZE];
