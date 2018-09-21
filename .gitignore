@@ -5,3 +5,5 @@ src/Makefile
 src/cmake_install.cmake
 src/CMakeCache.txt
 src/serv
+src/ip_server.txt
+*.mp4
