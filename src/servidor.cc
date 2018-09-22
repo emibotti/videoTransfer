@@ -17,7 +17,7 @@
 using namespace cv;
 using namespace std;
 
-#define MY_IP "192.168.1.112"
+#define MY_IP "192.168.0.190"
 #define MAX_QUEUE 10
 #define MAX_MSG_SIZE 1024
 #define TRUE 1
@@ -74,7 +74,7 @@ int assign_free_position(){
 }
 
 void my_handler(int s){
-	printf("Caught close signal \n");
+	printf("\nInterrupcion detectada \n");
 	close(server_socket);
 	exit(1); 
 }
@@ -92,7 +92,7 @@ void force_exit_handler(){
 void init_estados(){
 	for(int i=0; i<MAX_CLIENTS; i++){
 		estados[i].status = POS_LIBRE;
-		estados[i].ip;
+		estados[i].ip = {0}; // init null
 		estados[i].port = -1;
 		estados[i].tcpThreadID = 0;
 		estados[i].udpThreadID = 0;
@@ -122,7 +122,6 @@ int main(){
     server_addr.sin_addr.s_addr = inet_addr(MY_IP);
 
     // Binding
-	// ref https://stackoverflow.com/questions/10035294/compiling-code-that-uses-socket-function-bind-with-libcxx-fails
 	int binding = ::bind(
 		server_socket,
 		(struct sockaddr *)&server_addr,
@@ -329,7 +328,7 @@ void *tcp_handler(void * argument){
 		}else if (has_received(message, STOP)){
 			printf("----- TCP Envio stop\n");
 			estados[args.client_index].status = STOP_STATUS;
-		}else if (has_received(message, CLOSE)){
+		}else if (received_data_size < 1 || has_received(message, CLOSE)){
 			string hostIP = estados[args.client_index].ip;
 			printf("Se cierra TCP %s:%d\n", hostIP.c_str(), estados[args.client_index].port);
 			estados[args.client_index].status = CLOSE_STATUS;

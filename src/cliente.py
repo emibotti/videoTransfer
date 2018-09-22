@@ -4,11 +4,9 @@ import sys
 import thread
 import numpy as np
 import cv2
-from threading import Lock, Thread
 
 file = open('ip_server.txt', 'r')
 ip = file.read()
-print file.read()
 SERVER_IP = ip
 SERVER_PORT = 8888
 NAME_WINDOW = "video"
@@ -28,8 +26,6 @@ menu_actions = {
 }
 
 INIT = "init"
-
-lock = Lock()
 udp_closed = False
 
 def init_video():
@@ -41,7 +37,7 @@ def udp_receiver(socket_udp):
         try:
             encoded, addr = socket_udp.recvfrom(MAX_UDP_SIZE)
         except:
-            print "Udp dejo de recibir." 
+            print "\nUdp dejo de recibir." 
             return 
         encoded = np.fromstring(encoded, np.uint8)
         frame = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
@@ -65,7 +61,11 @@ def menu(socket_udp):
                 3- PAUSE
                 0- SALIR
             """
-        action = input("")
+        try:
+            action = input("")
+        except KeyboardInterrupt:
+            print "\nInterrupcion detectada\n"
+            return
         message = menu_actions.get(action, "close")
         if message and message != "close":
             send_msg(message)
@@ -75,50 +75,31 @@ def menu(socket_udp):
     udp_closed = True
     socket_udp.close()
 
-def get_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # doesn't even have to be reachable
-        s.connect(('10.255.255.255', 1))
-        IP = s.getsockname()[0]
-    except:
-        IP = '127.0.0.1'
-    finally:
-        s.close()
-    return IP
-
 # Se crea socket tcp y udp en internet
 
 socket_tcp = socket.socket( socket.AF_INET, socket.SOCK_STREAM)
 socket_udp = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
 
-
-# Se bindea socket udp
-
-myip = get_ip()
-print myip
-socket_udp.bind((myip, 0)) #socket.gethostname() o "127.0.0.1"
-udp_ip, udp_port = socket_udp.getsockname()
-
-print udp_ip
-print udp_port
-
-#conexion
-socket_tcp.connect((SERVER_IP,SERVER_PORT))
-
 try:
+    # Conexion tcp
+    socket_tcp.connect((SERVER_IP,SERVER_PORT))
+    print 'Server IP %s' % SERVER_IP
+
+    # Obtencion ip host
+    myip = socket_tcp.getsockname()[0]
+
+    # Bind udp
+    socket_udp.bind((myip, 0))
+    udp_ip, udp_port = socket_udp.getsockname()
+
+    print 'Host IP %s' % udp_ip
+    print 'Host PORT %d' % udp_port
+
     init_udp(socket_tcp, udp_port)
     thread.start_new_thread(udp_receiver, (socket_udp,))
-    # t = Thread(target=menu, args=(socket_udp, ), name='daemon')
-   #  t1 = Thread(target=udp_receiver, args=(socket_udp, ), name='daemon')
-    # t1.start()
-    # thread.start_new_thread(menu, (socket_udp,))
-    # udp_receiver(socket_udp)
     menu(socket_udp)
-    # t.join()
 
 finally:
-    #join thread?
     socket_tcp.close()
     print "Conexion tcp cliente cerrada"  
     socket_udp.close()
